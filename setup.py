@@ -45,7 +45,7 @@ def find_package_data(where='.', package='', exclude=standard_exclude, exclude_d
 setup(name='docassemble.TLABarrettLaw',
       version='0.0.1',
       description=('A docassemble extension.'),
-      long_description='# docassemble.TLABarrettLaw\n\nA docassemble extension.\n\n## Author\n\nBarret Schultz, bgschult@ualberta.ca\n\n',
+      long_description='# docassemble.TLABarrettLaw\r\n\r\nA docassemble extension.\r\n\r\n## Author\r\n\r\nBarret Schultz, bgschult@ualberta.ca\r\n\r\n',
       long_description_content_type='text/markdown',
       author='Barret Schultz',
       author_email='bgschult@ualberta.ca',
