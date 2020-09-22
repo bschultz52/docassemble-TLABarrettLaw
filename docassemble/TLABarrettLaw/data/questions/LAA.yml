@@ -10,13 +10,13 @@ subquestion: |
  
   I asked whether you like football? You said ${     user.likes_football } 
   
-  You like ${ user.likes_Ravens }
+  You like the Ravens: ${ user.likes_Ravens }
   
-  You like ${ user.likes_Patriots }
+  You like the Patriots: ${ user.likes_Patriots }
   
-  You like ${ user.likes_Chiefs }
+  You like the Chiefs: ${ user.likes_Chiefs }
   
-  You like ${ user.likes_Seahawks }
+  You like the Seahawks: ${ user.likes_Seahawks }
   
   Your favorite side is ${ user.favorite_side }
   
