@@ -1,7 +1,63 @@
+objects:
+  - user: Individual
+  - cohabs: DAList.using(object_type=Individual)
+---
 mandatory: true
 question: |
-  Hello, ${ name }.
+    Hello, ${ user }!
+subquestion: |
+  You live with ${ cohabs }
+ 
+  I asked whether you like football? You said ${     user.likes_football } 
+  
+  You like ${ user.likes_Ravens }
+  
+  You like ${ user.likes_Patriots }
+  
+  You like ${ user.likes_Chiefs }
+  
+  You like ${ user.likes_Seahawks }
+  
+  Your favorite side is ${ user.favorite_side }
+  
+  Your signature: ${ user.signature }
 ---
-question: What is your name?
+generic object: Individual
+question: |
+  What is ${x.object_possessive('name') }?
 fields:
-  - Name: name
+  - First Name: x.name.first
+  - Last Name: x.name.last
+---
+question: Do you live with anyone?
+yesno: cohabs.there_are_any
+---
+question: Do you live with anyone else?
+yesno: cohabs.there_is_another
+---
+question: Do you like football?
+yesno: user.likes_football
+---
+question: |
+  What football teams do you like?
+fields:
+  - Ravens: user.likes_Ravens
+    datatype: yesnowide
+  - Patriots: user.likes_Patriots
+    datatype: yesnowide
+  - Chiefs: user.likes_Chiefs
+    datatype: yesnowide
+  - Seahawks: user.likes_Seahawks
+    datatype: yesnowide
+---
+question: |
+ What is your favorite side?
+field: user.favorite_side
+choices:
+  - Offense
+  - Defense
+  - Special Teams
+  - Tailgater
+--- 
+question: Please sign
+signature: user.signature
