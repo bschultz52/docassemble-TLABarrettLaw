@@ -6,9 +6,9 @@ mandatory: true
 question: |
     Hello, ${ user }!
 subquestion: |
-  You live with ${ cohabs }
+  You live with: ${ cohabs }
  
-  I asked whether you like football? You said ${     user.likes_football } 
+  I asked whether you like football? You said: ${     user.likes_football } 
   
   You like the Ravens: ${ user.likes_Ravens }
   
@@ -18,7 +18,7 @@ subquestion: |
   
   You like the Seahawks: ${ user.likes_Seahawks }
   
-  Your favorite side is ${ user.favorite_side }
+  Your favorite side is: ${ user.favorite_side }
   
   Your signature: ${ user.signature }
 ---
