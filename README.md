@@ -4,5 +4,5 @@ A docassemble extension.
 
 ## Author
 
-Barret Schultz, bgschult@ualberta.ca
+Barrett Schultz, bgschult@ualberta.ca
 
