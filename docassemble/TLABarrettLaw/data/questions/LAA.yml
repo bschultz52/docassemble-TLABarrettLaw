@@ -4,24 +4,53 @@ objects:
   - family_members: DAList.using(object_type=Individual)
 ---
 mandatory: true
-question: Here is your document
-    Hello, ${ user }!
-subquestion: |
-  You live with: ${ cohabs }
+code: |
+  # Code-flow block
+
+  
+---
+mandatory: true
+question: Results
+subquestion:   |
+
+  Dear, ${ user }.
+  
+  % if user_eligible:
+  You are eligible for Legal Aid
+  % endif
  
-  I asked whether you like football? You said: ${     user.likes_football } 
+  % if No_Lawyer:
+  You currently do not have a Legal Representation
+  % endif
+ 
+  % if Cannot_Afford_Lawyer:
+  You cannot currently afford legal representation.
+  % if Lawyer_Is_Acting:
+  You are currently still represented by a lawyer.
+  % endif
+  % endif
+
+  % if In_Alberta:
+  Your legal matter is in Alberta.
+  % endif
   
-  You like the Ravens: ${ user.likes_Ravens }
+  % if Lives_In_Alberta:
+  You are also currently living in Alberta.
+  % endif
   
-  You like the Patriots: ${ user.likes_Patriots }
+  % if Received_Laa_Assistance:
+  You have received LAA Assitance on this matter in the past.
+  % else:
   
-  You like the Chiefs: ${ user.likes_Chiefs }
+  % if Criminal_Matter:
+  This is a criminal law matter
+  % endif
   
-  You like the Seahawks: ${ user.likes_Seahawks }
-  
-  Your favorite side is: ${ user.favorite_side }
-  
-  Your signature: ${ user.signature }
+  % if Family_Matter:
+  This is a family law matter
+  % endif
+  % endif
+
 attachments:
   - name: Summary of Benefits
     filename: benefits_summary
@@ -46,17 +75,31 @@ attachments:
       
       % endif
       
-      % if aid_qualifies:
-      
-      I understand you qualify for legal aid.
-      
-      % else:
-      
-      I understand you do not qualify for legal aid.
-      
-      % endif
-      
-       You told me you were born on ${ format_date(birthday, format='EEE, MMMM d, yyyy') }. A good lawyer would write that as ${ format_date(birthday, format="yyyy-MM-dd") }
+      Your signature? ${ user.signature }
+---
+code: |
+  # Unrepped 
+    
+  if No_Lawyer and Cannot_Afford_Lawyer:
+    user_not_reped = True 
+  else: 
+    user_not_reped = False
+---
+code: |
+  # Resident  
+    
+  if In_Alberta and Lives_In_Alberta:
+    user_resident = True 
+  else:
+    user_resident = False
+---
+code: |
+  # Eligibility 
+    
+  if Received_Laa_Assistance or (user_not_reped and user_resident and Criminal_Matter) or (user_not_reped and user_resident and Family_Matter):
+    user_eligible = True 
+  else:
+    user_eligible = False 
 ---
 generic object: Individual
 question: |
@@ -65,63 +108,41 @@ fields:
   - First Name: x.name.first
   - Last Name: x.name.last
 ---
-Question: Do you have any family members?
+question: Do you have any family members?
 yesno: family_members.there_are_any
 ---
 question: Do you have any additional family members?
 yesno: family_members.there_is_another
----
-question: Do you qualify for legal aid?
-yesno: aid_qualifies
----
-question: what is your birthday?
-fields:
-  - Birthday: birthday
-    datatype: date
 ---
 question: Do you live with anyone?
 yesno: cohabs.there_are_any
 ---
 question: Do you live with anyone else?
 yesno: cohabs.there_is_another
----
-question: Do you like football?
-yesno: user.likes_football
----
-question: |
-  What football teams do you like?
-fields:
-  - Ravens: user.likes_Ravens
-    datatype: yesnowide
-  - Patriots: user.likes_Patriots
-    datatype: yesnowide
-  - Chiefs: user.likes_Chiefs
-    datatype: yesnowide
-  - Seahawks: user.likes_Seahawks
-    datatype: yesnowide
----
-question: |
- What is your favorite side?
-field: user.favorite_side
-choices:
-  - Offense
-  - Defense
-  - Special Teams
-  - Tailgater
 --- 
 question: Please sign
 signature: user.signature
 ---
-Question: Do you have any family members?
-yesno: family_members.there_are_any
+question: Do you have a lawyer?
+noyes: No_Lawyer
 ---
-question: Do you have any additional family members?
-yesno: family_members.there_is_another
+question: Can you afford a lawyer?
+noyes: Cannot_Afford_Lawyer
 ---
-question: Do you qualify for legal aid?
-yesno: aid_qualifies
+question: Is your lawyer still acting for you in this matter?
+yesno: Lawyer_Is_Acting
 ---
-question: what is your birthday?
-fields:
-  - Birthday: birthday
-    datatype: date
+question: Is your matter in Alberta?
+yesno: In_Alberta
+---
+question: Do you live in Alberta?
+yesno: Lives_In_Alberta
+--- 
+question: Is this a family law matter?
+yesno: Family_Matter
+---
+question: Is this a criminal law matter?
+yesno: Criminal_Matter
+---
+question: Is this an appeal of another LAA matter?
+yesno: Received_Laa_Assistance
