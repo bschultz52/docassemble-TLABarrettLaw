@@ -1,210 +1,349 @@
-objects:
+default role: client
+code: |
+  # This will run every screen
+  multi_user = True
+  reviewer_email = "jmorris@ualberta.ca"
+  role = 'client'
+  if user_logged_in() and user_info().email == reviewer_email:
+    role = 'reviewer'
+---
+template: request_notification
+subject: new request
+content: |
+  Someone has requested that you [click here](${ interview_url() }) to respond.
+---
+template: response_notification
+subject: Response Recieved
+content: |
+  Your reviewer has answered your request, [click here](${ interview_url() }) to view it.
+---
+event: role_event
+question: Waiting on Another User
+subquestion: |
+  Our apologies, you are not authorized to look at the next screen of this interview.
+  
+  % if 'client' in role_needed:
+  We are waiting for the client response, and you are a reviewer.
+  % elif 'reviewer' in role_needed:
+  We are waiting for the reviewer response, and you are the client.
+  % endif
+  
+  Please have the other party go to [this link](${ interview_url() }) to continue with the application.
+buttons: 
+  - Check: refresh
+---
+objects: 
   - user: Individual
-  - cohabs: DAList.using(object_type=Individual)
-  - family_members: DAList.using(object_type=Individual, complete_attribute="assets")
+  - family: DAList.using(object_type=Individual, complete_attribute="complete") 
+  - family[i].monthly_income: Value
+  - family[i].annual_income: Value
+  - family[i].assets: Value
+  - user.monthly_income: Value
+  - user.annual_income: Value
+  - user.assets: Value
+---
+code: |
+  family[i].monthly_income.exists
+  family[i].complete = True
 ---
 mandatory: true
 code: |
-  # Code-flow block 
- 
-  user
-  user.assets
+  # code flow block
+  user.name.first
+  user.monthly_income.exists
+  family
   
-  if (Received_Laa_Assistance == False):  
-    In_Alberta
-    Lives_In_Alberta
-    Family_Matter
-    Criminal_Matter
-  if Cannot_Afford_Lawyer:
-    No_Lawyer
-    Lawyer_Is_Acting
-    
- 
+  request
+  request_notification_sent
+  reviewer_response
+  response_notification_sent
+---
+code: |
+  request_notification_sent = send_email(to=reviewer_email,template=request_notification)
+---
+code: |
+  response_notification_sent = send_email(to=email_address,template=response_notification)
 ---
 mandatory: true
 question: Results
-subquestion:   |
+subquestion: |
+  
+  The client said ${ request }.
+  
+  The request was sent to the reviewer who 
+  % if reviewer_response:
+  approved
+  % else: 
+  did not approve 
+  % endif
+  the request.
+  
   Hello, ${ user }.
   
-  % if (user_eligible and user_qualifies) :
-  Student Legal Services can 100000% rep you.
-  
+  % if financially_eligible and user_eligible:
+  Congratulations, you qualify for legal aid.
+  % elif marginally_eligible and user_eligible:
+  Congratulations, you marginally qualify for legal aid.
   % else:
-  Sorry my friend, no SLS help for you.
+  Sorry friend, no SLS for you.  
   % endif
   
-  Your assets are ${user.assets}, your income in the past 30 days was ${user.monthincome}, and your income in the past year was ${user.yearincome}.
-                
-  %for j in family_members:
-  ${j} has ${j.assets} in assets, ${j.monthincome} in income in the past 30 days, and ${j.yearincome} in the past year.
-   %endfor
+  % if has_lawyer:
+  We understand you do not currently have a lawyer.
+  % endif
+  
+  % if still_acting:
+  We also understand your current lawyer is still acting on your behalf.
+  % endif
+  
+  % if afford_lawyer:
+  You told us that you cannot afford a lawyer.
+  % endif
+  
+  % if LAA_assistance:
+  You told us this is an appeal of a matter for which you have previously recieved LAA assistance. 
+  
+  % else:
+  
+  % if located_Alberta:
+  Your legal matter is located in Alberta.
+  % endif
+  
+  % if lives_Alberta:
+  You also live in Alberta. We provide legal aid to residents of Alberta.
+  % endif
+  
+  % if criminal_matter:
+  We understand this is a criminal matter.
+  % endif
+  
+  % if family_matter:
+  We understand you require representation in a family matter. 
+  % endif
+  % endif
+  
+  Your monthly income is ${ user.monthly_income }
+  Your annual income is ${ user.annual_income }
+  
+  % if len(family) > 0:
+  % for f in family:
+  Your cohabitant's name is: ${ f }.
+  
+  Their monthly income is ${ f.monthly_income }
+  Their annual income is ${ f.annual_income }
+  % endfor
+  % else:
+  You do not have any cohabitants.
+  % endif 
         
-   Your total monthly income was ${total_income_month}.
-   Your total yearly income was ${total_income_year}.
 attachments:
   - name: Summary of Benefits
     filename: benefits_summary
     content: |
-      Hello, ${ user }.
+     
+      % if len(family) > 0:
+      The family members you provided info to us about are: ${ family }.
+      
+      % for f in family:
+      
+      ${ f } sounds like a cool person.
+      
+      %endfor
+      
+      I'm also a particularly big fan of ${ family[0] }. 
+      
+      % else: 
+      You didn't tell me about any family members.
+      % endif
        
-       % if No_Lawyer:
-      You currently do not have a Legal Representation
-       % endif
-       
-       % if Cannot_Afford_Lawyer:
-       You cannot currently afford legal representation.
-       % endif
-       
-       % if Lawyer_Is_Acting:
-       You are currently still represented by a lawyer.
-       % endif
-      
-      % if In_Alberta: 
-      Your legal matter is in Alberta.
-      % endif
-      
-      % if Lives_In_Alberta:
-      You are also currently living in Alberta.
-      % endif
-      
-      % if Received_Laa_Assistance:
-      You have received LAA Assitance on this matter in the past.
-      % endif
-      
-      % if Criminal_Matter:
-      This is a criminal law matter
-      % endif
-      
-      % if Family_Matter:
-      This is a family law matter
-      % endif
-      
-      Your signature? ${ user.signature }
-      
-      All the best,
-      Student Legal Services
 ---
 code: |
-  # Unrepped 
+  # Eligibility
+  
+  if LAA_assistance or (user_represented and user_resident and criminal_matter) or (user_represented and user_resident and family_matter):
+    user_eligible = True
+  else:
+    user_eligible = False
     
-  if No_Lawyer and Cannot_Afford_Lawyer:
-    user_not_reped = True 
-  else: 
-    user_not_reped = False
 ---
 code: |
-  # Resident  
-    
-  if In_Alberta and Lives_In_Alberta:
-    user_resident = True 
+  # Representation
+  
+  if (has_lawyer and still_acting) or afford_lawyer:
+    user_represented = True
+  else:
+    user_represented = False
+---
+code: |
+  # Residency
+  
+  if (located_Alberta and lives_Alberta):
+    user_resident = True
   else:
     user_resident = False
----
-code: |
-  # Eligibility 
-    
-  if Received_Laa_Assistance or (user_not_reped and user_resident and Criminal_Matter) or (user_not_reped and user_resident and Family_Matter):
-    user_eligible = True 
-  else:
-    user_eligible = False 
----
-code: |
-  total_income_month = user.monthincome
-  for j in family_members:
-    total_income_month += j.monthincome
----
-code: |
-  total_income_year = user.yearincome  
-  for j in family_members:
-    total_income_year += j.yearincome   
----
-code: |
-  family_size = len(family_members)
-  if family_size > 6:
-    family_size = 6
-  eligible = False
-  marginally_eligible = False
-  ineligible = False
-  maximum_income_month = [1668, 2066, 2940, 3178, 3416, 3655]
-  maximum_income_year = [20021, 24788, 35275, 38134, 40995, 43855]
- 
-  if ((total_income_month <= maximum_income_month[family_size]) and (total_income_year <= maximum_income_year[family_size])):
-    eligible = True
-  elif ((total_income_month <= maximum_income_month[family_size]*1.1) and (total_income_year <= maximum_income_year[family_size]*1.1)):
-    marginally_eligible = True
-  else:
-    ineligible = True
-      
----
-code: |
-  # qualifies
-  if (user_not_reped and user_resident and (eligible or marginally_eligible)):
-    user_qualifies = True
-  else:
-    user_qualifies = False
 ---
 generic object: Individual
 question: |
   What is ${x.object_possessive('name') }?
-fields:
-  - First Name: x.name.first
-  - Last Name: x.name.last
+fields: 
+  - first name: x.name.first
+  - last name: x.name.last
 ---
-question: Do you have any family members?
-yesno: family_members.there_are_any
+question: Do you have a lawyer?
+noyes: has_lawyer
 ---
-question: Do you have any additional family members?
-yesno: family_members.there_is_another
+question: Can you afford a lawyer?
+noyes: afford_lawyer
 ---
-question: Do you live with anyone?
-yesno: cohabs.there_are_any
+question: Is your current lawyer still acting for you?
+yesno: still_acting
 ---
-question: Do you live with anyone else?
-yesno: cohabs.there_is_another
---- 
+question: Is your legal matter located in Alberta?
+yesno: located_Alberta
+---
+question: Is your legal matter a family law matter?
+yesno: family_matter
+---
+question: Is your legal matter a criminal law matter?
+yesno: criminal_matter
+---
+question: Do you live in Alberta?
+yesno: lives_Alberta
+---
+question: Is your matter an appeal of a matter for which you recieved LAA assistance?
+yesno: LAA_assistance
+---
 question: Please sign
 signature: user.signature
 ---
-question: Do you have a lawyer?
-noyes: No_Lawyer
----
-question: Can you afford a lawyer?
-noyes: Cannot_Afford_Lawyer
----
-question: Is your lawyer still acting for you in this matter?
-yesno: Lawyer_Is_Acting
----
-question: Is your matter in Alberta?
-yesno: In_Alberta
----
-question: Do you live in Alberta?
-yesno: Lives_In_Alberta
---- 
-question: Is this a family law matter?
-yesno: Family_Matter
----
-question: Is this a criminal law matter?
-yesno: Criminal_Matter
----
-question: Is this an appeal of another LAA matter?
-yesno: Received_Laa_Assistance
----
+generic object: Individual
 question: |
-  Please enter the following information for ${family_members[i]}?
-fields:
-  - How much in assets do they own?: family_members[i].assets
-    datatype: currency
-  - What was their income in the last 30 days?: family_members[i].monthincome
-    datatype: currency
-  - What was their income in the last year?: family_members[i].yearincome
-    datatype: currency
+  What is ${x.object_possessive('name') }?
+fields: 
+  - first name: x.name.first
+  - last name: x.name.last
 ---
+Question: Do you have any family members?
+yesno: family.there_are_any
+---
+question: Do you have any additional family members?
+yesno: family.there_is_another
+---
+generic object: Individual
 question: |
-  Please enter the following information for ${user}?
+  Can you please provide ${ x }'s income?
 fields:
-  - How much in assets do you own?: user.assets
+  - Do they have any assets?: x.assets.exists
+    datatype: yesnowide
+  - Assets: x.assets.value
     datatype: currency
-  - What was your income in the last 30 days?: user.monthincome
+    show if: x.assets.exists
+  - Do they have a monthly income?: x.monthly_income.exists
+    datatype: yesnowide
+  - Monthly Income: x.monthly_income.value
     datatype: currency
-  - What was your income in the last year?: user.yearincome
+    show if: x.monthly_income.exists
+  - Do they have an annual income?: x.annual_income.exists
+    datatype: yesnowide
+  - Annual Income: x.annual_income.value
     datatype: currency
+    show if: x.annual_income.exists
+---
+reconsider: True
+code: |
+  # Defining financially eligible
+  if eligible_monthly_income and eligible_annual_income:
+    financially_eligible = True
+  else:
+    financially_eligible = False
+---
+reconsider: True
+code: |
+  # Defining marginally eligible
+  if (marginal_monthly_income and eligible_annual_income) or (eligible_monthly_income and marginal_annual_income) or (marginal_monthly_income and marginal_annual_income):
+    marginally_eligible = True
+  else:
+    marginally_eligible = False
+---
+reconsider: True
+code: |
+  # Monthly incomes:
+  if total_monthly_income < monthly_income_cap:
+    eligible_monthly_income = True
+    marginal_monthly_income = False
+  elif total_monthly_income < monthly_income_cap*1.1:
+    eligible_monthly_income = False
+    marginal_monthly_income = True
+  else:
+    eligible_monthly_income = False
+    marginal_monthly_income = False
+---
+reconsider: True
+code: |
+  # Annual incomes:
+  if total_annual_income < annual_income_cap:
+    eligible_annual_income = True
+    marginal_annual_income = False
+  elif total_annual_income < annual_income_cap*1.1:
+    eligible_annual_income = False
+    marginal_annual_income = True
+  else:
+    eligible_annual_income = False
+    marginal_annual_income = False
+---
+reconsider: True
+code: |
+  # Calculates total monthly income
+  total_monthly_income = 0
+  if user.monthly_income.exists:
+    total_monthly_income += user.monthly_income.value
+  for f in family:
+    if f.monthly_income.exists:
+      total_monthly_income += f.monthly_income.value
+---
+reconsider: True
+code: |
+  # Calculates total monthly income
+  total_annual_income = 0
+  if user.annual_income.exists:
+    total_annual_income += user.annual_income.value
+  for f in family:
+    if f.annual_income.exists:
+      total_annual_income += f.annual_income.value
+---
+reconsider: True
+code: |
+  if family_size == 1:
+    monthly_income_cap = 1668
+    annual_income_cap = 20021
+  elif family_size == 2:
+    monthly_income_cap = 2066
+    annual_income_cap = 24788
+  elif family_size == 3:
+    monthly_income_cap = 2940
+    annual_income_cap = 35275
+  elif family_size == 4:
+    monthly_income_cap = 3178
+    annual_income_cap = 38134
+  elif family_size == 5:
+    monthly_income_cap = 3416
+    annual_income_cap = 40995
+  elif family_size >= 6:
+    monthly_income_cap = 3655
+    annual_income_cap = 43855
+---
+reconsider: True
+code: |
+  family_size = 1 + len(family)
+---
+question: Can we please have your email and the nature of your request?
+fields:
+  - Email: email_address
+  - Request: request
+---
+role: reviewer
+question: Response
+subquestion: |
+  The client has stated ${ request }. Do you approve?
+yesno: reviewer_response
+---
